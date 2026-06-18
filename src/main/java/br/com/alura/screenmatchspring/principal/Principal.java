@@ -17,6 +17,7 @@ public class Principal {
     private final String API_KEY = "&apikey=" + OMDB_API_KEY;
     private List<Serie> series = new ArrayList<>();
     private SerieRepository repositorio;
+    private Optional<Serie> serieBusca;
 
     public Principal(SerieRepository repositorio) {
         this.repositorio = repositorio;
@@ -34,6 +35,9 @@ public class Principal {
                     6 - Buscar Top 5 series
                     7 - Buscar serie por Categoria
                     8 - Buscar por máximo de temporadas e minimo de avaliacao
+                    9 - Buscar por trecho do episodio
+                    10 - Buscar top 5 episódios por série
+                    11 - Buscar episódios a partir de uma data
                     
                     0 - Sair
                     """;
@@ -69,6 +73,15 @@ public class Principal {
                     break;
                 case 8:
                     buscarSeriePorMaximoTemporadas();
+                    break;
+                case 9:
+                    buscarEpisodioPorTrecho();
+                    break;
+                case 10:
+                    topEpisodiosPorSerie();
+                    break;
+                case 11:
+                    buscarEpisodiosDepoisDeUmaData();
                     break;
                 default:
                     System.out.println("Opção inválida!");
@@ -131,10 +144,10 @@ public class Principal {
     private void buscarSeriePorTitulo() {
         System.out.println("Digite o nome da serie: ");
         String nomeSerie = leitor.nextLine();
-        Optional<Serie> serieBuscada = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
+        serieBusca = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
 
-        if (serieBuscada.isPresent()) {
-            System.out.println("Dados da série: " + serieBuscada.get());
+        if (serieBusca.isPresent()) {
+            System.out.println("Dados da série: " + serieBusca.get());
         } else {
             System.out.println("Serie não encontrada!");
         }
@@ -171,8 +184,43 @@ public class Principal {
         Integer maximoTemporadas = leitor.nextInt();
         System.out.println("Digite a avaliaco minima: ");
         Double avaliacaoMinima = leitor.nextDouble();
-        List<Serie> seriesEncontradas = repositorio.findByTotalTemporadasLessThanEqualAndAvaliacaoGreaterThanEqualOrderByAvaliacaoDesc(maximoTemporadas, avaliacaoMinima);
+        List<Serie> seriesEncontradas = repositorio.seriesPorTemporadaEAvaliacao(maximoTemporadas, avaliacaoMinima);
         seriesEncontradas.forEach(s ->
                 System.out.println("Titulo: " + s.getTitulo() + " Temporadas: " + s.getTotalTemporadas() + " Avaliacao: " + s.getAvaliacao()));
+    }
+
+    private void buscarEpisodioPorTrecho() {
+        System.out.println("Digite o trecho do titulo do episodio: ");
+        String nomeTrecho = leitor.nextLine();
+        List<Episodio> episodiosEncontrados = repositorio.episodiosPorTrecho(nomeTrecho);
+        episodiosEncontrados.forEach(e ->
+                System.out.printf("Serie: %s - Temporada: %s - Episodio: %s\n",
+                        e.getSerie().getTitulo(), e.getTemporada(), e.getTitulo()));
+    }
+
+    private void topEpisodiosPorSerie() {
+        buscarSeriePorTitulo();
+
+        if (serieBusca.isPresent()) {
+            Serie serie = serieBusca.get();
+            List<Episodio> topEpisodios = repositorio.topEpisodiosPorSerie(serie);
+            topEpisodios.forEach(e ->
+                    System.out.printf("Serie: %s - Temporada: %s - Episodio: %s - Avaliacao: %s\n",
+                            e.getSerie().getTitulo(), e.getTemporada(), e.getTitulo(), e.getAvaliacao()));
+        }
+    }
+
+    private void buscarEpisodiosDepoisDeUmaData() {
+        buscarSeriePorTitulo();
+        if (serieBusca.isPresent()) {
+            Serie serie = serieBusca.get();
+            System.out.println("Digite o ano limite de lancamento: ");
+            int anoLimite = leitor.nextInt();
+            leitor.nextLine();
+            List<Episodio> episodiosData = repositorio.episodiosDepoisDeUmaData(serie, anoLimite);
+            episodiosData.forEach(e ->
+                    System.out.printf("Serie: %s - Episodio: %s - Ano Lançamento: %s\n",
+                            e.getSerie().getTitulo(), e.getTitulo(), e.getDataLancamento()));
+        }
     }
 }
